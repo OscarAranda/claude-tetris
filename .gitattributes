@@ -1,0 +1,4 @@
+# Los scripts se ejecutan en runners Linux: fuerza LF pase lo que pase con
+# core.autocrlf en Windows. Un CRLF en un .sh rompe el intérprete en el runner.
+*.sh text eol=lf
+*.yml text eol=lf
