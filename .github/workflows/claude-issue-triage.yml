@@ -129,6 +129,12 @@ jobs:
             Lo que falte por concretar, o "Ninguna".
 
             REGLAS DE CALIDAD
+            - TODO el comentario tiene que estar escrito en Markdown válido de GitHub,
+              para que GitHub lo renderice correctamente: encabezados con `##`, listas
+              con `-`, pasos numerados con `1.`, nombres de archivo, funciones y
+              referencias `archivo:línea` entre backticks, bloques de código con
+              triple backtick y su lenguaje, y **negrita** solo para lo importante.
+              No entregues texto plano ni HTML.
             - Cita `archivo:línea` siempre que puedas. Un diagnóstico sin referencias
               concretas al código no sirve para nada.
             - Si el issue es ambiguo, dilo en "Preguntas abiertas" en lugar de rellenar
