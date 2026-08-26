@@ -259,6 +259,7 @@ function loop(ts) {
       lockPiece();
     }
   }
+  if (gameOver) return; // lockPiece() pudo terminar la partida: no reprogramar el bucle
   draw();
   animId = requestAnimationFrame(loop);
 }
