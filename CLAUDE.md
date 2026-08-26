@@ -23,11 +23,12 @@ Load order matters: `game.js` is the last element in `<body>`, has no `defer`, q
 
 Key structures and invariants:
 
-- **Board** — `ROWS × COLS` array of ints. `0` = empty; `1–7` = piece type, which is *also* the index into `COLORS`. Piece matrices in `PIECES` are filled with their own type number for this reason, so a cell can be drawn without knowing which piece it came from.
+- **Board** — `ROWS × COLS` array of ints. `0` = empty; `1–8` = piece type, which is *also* the index into `COLORS`. Piece matrices in `PIECES` are filled with their own type number for this reason, so a cell can be drawn without knowing which piece it came from.
 - **Rotation** — `rotateCW` transposes + reverses into a fresh matrix. `tryRotate` applies basic wall kicks by trying x-offsets `[0, -1, 1, -2, 2]` and taking the first that doesn't `collide`; if none fit, the rotation is silently dropped.
 - **Collision** — `collide(shape, ox, oy)` is the single source of truth for legality; it is reused by movement, rotation, soft/hard drop, ghost projection, and the game-over check in `spawn()`. It deliberately allows `ny < 0` so a piece may straddle the top edge.
 - **Game loop** — `loop(ts)` via `requestAnimationFrame`, accumulating `dt` into `dropAccum` and advancing one row when `dropAccum >= dropInterval`. Pause/game-over work by `cancelAnimationFrame(animId)`; resuming *must* reset `lastTime = performance.now()` first or the accumulated `dt` spans the whole pause.
 - **Rendering** — `draw()` clears and repaints everything each frame (grid → locked board → ghost at `ghostY()` with alpha 0.2 → current piece). There is no dirty-rect or partial redraw; adding visuals means adding a pass here.
+- **Tuerca (type 8)** — a 3×3 ring with a hollow centre. Its round hole is not board state, it is drawn: `drawNutHole` erases a circle with `globalCompositeOperation = 'destination-out'` (theme-proof — it reveals the CSS `--board-bg`) *after* the blocks are painted. Locked nuts are found by pattern (`isNutHole`: an empty cell whose 8 neighbours are all `8`), so a nut split by a line clear simply reverts to a square hole. For the current piece and ghost, `carveCurrentNutHole` first checks the centre board cell is empty — a nut can legally straddle an overhanging block, and erasing there would hide a real block.
 - **HUD** — the canvas and the DOM HUD are separate. Score/lines/level changes only reach the screen through `updateHUD()`, which the keydown handler calls unconditionally after every input; new code paths that change those values must call it themselves.
 - **Difficulty** — `clearLines()` owns scoring *and* progression: `level = floor(lines/10)+1`, `dropInterval = max(100, 1000 - (level-1)*90)`.
 - **Restart** — `init()` is the reset function and is called both at startup and by the restart button; anything added to game state must be re-initialized there.
@@ -36,4 +37,5 @@ Key structures and invariants:
 
 - Canvas sizes are hardcoded in `index.html` and must match the JS constants: `#board` is `COLS*BLOCK × ROWS*BLOCK` (300×600) and `#next-canvas` assumes a 4×4 grid at 30px (120×120, `NB` in `drawNext`). Changing `COLS`, `ROWS`, or `BLOCK` requires editing the HTML too.
 - User-facing strings (overlay text, control list) are Spanish; keep new UI text consistent.
+- The tuerca's hole is sealed by its own blocks, so nothing can ever fall into it: the middle row of every locked nut is permanently unclearable. That is deliberate (it is the challenge piece), not a bug — don't "fix" it in `clearLines`.
 - `hardDrop` and `softDrop` end in `lockPiece()` → `merge` → `clearLines` → `spawn`; there is no lock delay, so a piece cannot be slid after landing.
