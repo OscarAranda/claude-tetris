@@ -13,6 +13,7 @@ const COLORS = [
   '#e57373', // Z - red
   '#90caf9', // J - azul pálido
   '#ffb74d', // L - orange
+  '#b0bec5', // Tuerca - gris acero
 ];
 
 const PIECES = [
@@ -24,7 +25,10 @@ const PIECES = [
   [[5,5,0],[0,5,5],[0,0,0]],                  // Z
   [[6,0,0],[6,6,6],[0,0,0]],                  // J
   [[0,0,7],[7,7,7],[0,0,0]],                  // L
+  [[8,8,8],[8,0,8],[8,8,8]],                  // Tuerca (3x3 con agujero)
 ];
+
+const NUT = 8; // tipo de la tuerca: 3x3 con el centro hueco
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
@@ -49,7 +53,7 @@ function createBoard() {
 }
 
 function randomPiece() {
-  const type = Math.floor(Math.random() * 7) + 1;
+  const type = Math.floor(Math.random() * (PIECES.length - 1)) + 1;
   const shape = PIECES[type].map(row => [...row]);
   return { type, shape, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0 };
 }
@@ -170,6 +174,30 @@ function drawBlock(context, x, y, colorIndex, size, alpha) {
   context.globalAlpha = 1;
 }
 
+// Vacía un círculo en el centro de la tuerca; recorta las esquinas interiores
+// de los 8 bloques para que el agujero se vea redondo. Usa destination-out
+// (borra píxeles) en vez de pintar un color, así vale para ambos temas.
+function drawNutHole(context, cx, cy, size) {
+  context.save();
+  context.globalCompositeOperation = 'destination-out';
+  context.beginPath();
+  context.arc((cx + 0.5) * size, (cy + 0.5) * size, size * 0.62, 0, Math.PI * 2);
+  context.fill();
+  context.restore();
+}
+
+// Una celda vacía rodeada por los 8 bloques de una tuerca. Si la tuerca se
+// parte al eliminarse una línea, el patrón deja de cumplirse y el hueco
+// vuelve a verse cuadrado.
+function isNutHole(r, c) {
+  if (board[r][c] !== 0) return false;
+  if (r === 0 || r === ROWS - 1 || c === 0 || c === COLS - 1) return false;
+  for (let dr = -1; dr <= 1; dr++)
+    for (let dc = -1; dc <= 1; dc++)
+      if ((dr || dc) && board[r + dr][c + dc] !== NUT) return false;
+  return true;
+}
+
 function drawGrid() {
   ctx.strokeStyle = isLightTheme ? '#d8d8e2' : '#22222e';
   ctx.lineWidth = 0.5;
@@ -196,6 +224,11 @@ function draw() {
     for (let c = 0; c < COLS; c++)
       drawBlock(ctx, c, r, board[r][c], BLOCK);
 
+  // agujeros de las tuercas ya fijadas (tras pintar todos los bloques)
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      if (isNutHole(r, c)) drawNutHole(ctx, c, r, BLOCK);
+
   // tras el game over la pieza que no cupo no se dibuja: quedaría superpuesta al montón
   if (gameOver) return;
 
@@ -205,11 +238,21 @@ function draw() {
     for (let c = 0; c < current.shape[r].length; c++)
       if (current.shape[r][c])
         drawBlock(ctx, current.x + c, gy + r, current.shape[r][c], BLOCK, 0.2);
+  if (current.type === NUT) carveCurrentNutHole(gy);
 
   // current piece
   for (let r = 0; r < current.shape.length; r++)
     for (let c = 0; c < current.shape[r].length; c++)
       drawBlock(ctx, current.x + c, current.y + r, current.shape[r][c], BLOCK);
+  if (current.type === NUT) carveCurrentNutHole(current.y);
+}
+
+// El agujero de la tuerca puede caer sobre un bloque ya fijado (collide sólo
+// mira las celdas llenas): en ese caso no se borra nada, o se ocultaría un
+// bloque real del tablero.
+function carveCurrentNutHole(y) {
+  const hy = y + 1, hx = current.x + 1;
+  if (hy >= 0 && hy < ROWS && board[hy][hx] === 0) drawNutHole(ctx, hx, hy, BLOCK);
 }
 
 function drawNext() {
@@ -221,6 +264,7 @@ function drawNext() {
   for (let r = 0; r < shape.length; r++)
     for (let c = 0; c < shape[r].length; c++)
       drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
+  if (next.type === NUT) drawNutHole(nextCtx, offX + 1, offY + 1, NB);
 }
 
 function endGame() {
