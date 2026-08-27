@@ -44,9 +44,19 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggle = document.getElementById('theme-toggle');
+const hsSaveRow = document.getElementById('hs-save-row');
+const hsNameInput = document.getElementById('hs-name');
+const hsSaveBtn = document.getElementById('hs-save-btn');
+const hsRecordsEl = document.getElementById('hs-records');
+const hsResetBtn = document.getElementById('hs-reset');
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 let isLightTheme = false;
+let combo, hsSaved, lastSavedEntry;
+let records;
+
+const RECORDS_KEY = 'tetris.records';
+const MAX_TOP = 5;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -116,6 +126,7 @@ function clearLines() {
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
   }
+  return cleared;
 }
 
 function ghostY() {
@@ -143,7 +154,16 @@ function softDrop() {
 
 function lockPiece() {
   merge();
-  clearLines();
+  const cleared = clearLines();
+  if (cleared > 0) {
+    combo++;
+    let changed = false;
+    if (combo > records.bestCombo) { records.bestCombo = combo; changed = true; }
+    if (lines > records.maxLines) { records.maxLines = lines; changed = true; }
+    if (changed) saveRecords();
+  } else {
+    combo = 0;
+  }
   spawn();
 }
 
@@ -267,6 +287,90 @@ function drawNext() {
   if (next.type === NUT) drawNutHole(nextCtx, offX + 1, offY + 1, NB);
 }
 
+// --- Tabla de récords (localStorage) ---
+
+function loadRecords() {
+  let parsed = null;
+  try {
+    parsed = JSON.parse(localStorage.getItem(RECORDS_KEY));
+  } catch (e) {
+    parsed = null;
+  }
+  if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.top)) {
+    parsed = { top: [], bestCombo: 0, maxLines: 0 };
+  }
+  const top = parsed.top
+    .filter(e => e && typeof e.score === 'number')
+    .map(e => ({
+      name: typeof e.name === 'string' && e.name ? e.name : 'Jugador',
+      score: e.score,
+      lines: typeof e.lines === 'number' ? e.lines : 0,
+      level: typeof e.level === 'number' ? e.level : 1,
+      date: typeof e.date === 'string' ? e.date : '',
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, MAX_TOP);
+  return {
+    top,
+    bestCombo: typeof parsed.bestCombo === 'number' ? parsed.bestCombo : 0,
+    maxLines: typeof parsed.maxLines === 'number' ? parsed.maxLines : 0,
+  };
+}
+
+function saveRecords() {
+  // localStorage puede fallar (modo privado, cuota excedida, iframe con
+  // storage bloqueado); si no se puede persistir, los récords siguen
+  // funcionando en memoria durante la partida en curso.
+  try {
+    localStorage.setItem(RECORDS_KEY, JSON.stringify(records));
+  } catch (e) {
+    /* noop */
+  }
+}
+
+function qualifiesForTop(s) {
+  if (s <= 0) return false;
+  if (records.top.length < MAX_TOP) return true;
+  return s > records.top[records.top.length - 1].score;
+}
+
+function insertRecord(name, s) {
+  const entry = { name: name || 'Jugador', score: s, lines, level, date: new Date().toISOString() };
+  records.top.push(entry);
+  records.top.sort((a, b) => b.score - a.score);
+  records.top = records.top.slice(0, MAX_TOP);
+  lastSavedEntry = entry;
+  saveRecords();
+  return entry;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[ch]));
+}
+
+// Reutilizable: pinta la tabla de récords + resumen (mejor combo, líneas
+// máximas) dentro de containerEl. El coordinador la reutiliza también en
+// el menú de pausa.
+function renderRecords(containerEl) {
+  if (!containerEl) return;
+  const rows = records.top.map((e, i) => {
+    const cls = e === lastSavedEntry ? ' class="hs-new"' : '';
+    return `<tr${cls}><td>${i + 1}</td><td>${escapeHtml(e.name)}</td><td>${e.score.toLocaleString()}</td><td>${e.lines}</td><td>${e.level}</td></tr>`;
+  }).join('');
+  containerEl.innerHTML = `
+    <table class="hs-table">
+      <thead><tr><th>#</th><th>Nombre</th><th>Puntos</th><th>Líneas</th><th>Nivel</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="5">Sin récords todavía</td></tr>'}</tbody>
+    </table>
+    <div class="hs-summary">
+      <span>Mejor combo: <b>${records.bestCombo}</b></span>
+      <span>Líneas máx: <b>${records.maxLines}</b></span>
+    </div>
+  `;
+}
+
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
@@ -274,6 +378,14 @@ function endGame() {
   draw(); // repinta el tablero final ya con gameOver activo
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
+  lastSavedEntry = null;
+  if (!hsSaved && qualifiesForTop(score)) {
+    hsNameInput.value = '';
+    hsSaveRow.classList.remove('hidden');
+  } else {
+    hsSaveRow.classList.add('hidden');
+  }
+  renderRecords(hsRecordsEl);
   overlay.classList.remove('hidden');
 }
 
@@ -318,10 +430,14 @@ function init() {
   dropInterval = 1000;
   dropAccum = 0;
   lastTime = performance.now();
+  combo = 0;
+  hsSaved = false;
+  lastSavedEntry = null;
   next = randomPiece();
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  hsSaveRow.classList.add('hidden');
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
@@ -353,6 +469,23 @@ document.addEventListener('keydown', e => {
 
 restartBtn.addEventListener('click', init);
 
+hsSaveBtn.addEventListener('click', () => {
+  if (hsSaved) return;
+  const name = (hsNameInput.value || '').trim().slice(0, 12) || 'Jugador';
+  insertRecord(name, score);
+  hsSaved = true;
+  hsSaveRow.classList.add('hidden');
+  renderRecords(hsRecordsEl);
+});
+
+hsResetBtn.addEventListener('click', () => {
+  if (!confirm('¿Borrar todos los récords guardados?')) return;
+  records = { top: [], bestCombo: 0, maxLines: 0 };
+  lastSavedEntry = null;
+  saveRecords();
+  renderRecords(hsRecordsEl);
+});
+
 function applyTheme() {
   document.body.classList.toggle('light', isLightTheme);
 }
@@ -367,5 +500,7 @@ themeToggle.addEventListener('change', () => {
   localStorage.setItem('theme', isLightTheme ? 'light' : 'dark');
   draw();
 });
+
+records = loadRecords();
 
 init();
