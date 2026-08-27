@@ -23,7 +23,11 @@
   --grid-color: #22222e;
 }
 
-body.light {
+/* ---- Skins ---- */
+/* :root ya define "retro" (oscuro, por defecto). Cada skin adicional se
+   selecciona con body[data-skin="..."], puesto por game.js sin recargar. */
+
+body[data-skin="claro"] {
   --bg: #f0f0f5;
   --text: #1a1a25;
   --accent: #3b5bdb;
@@ -40,6 +44,63 @@ body.light {
   --restart-color: #ffffff;
   --restart-hover: #5b7bef;
   --grid-color: #d8d8e2;
+}
+
+body[data-skin="neon"] {
+  --bg: #05050f;
+  --text: #e8f9ff;
+  --accent: #00e5ff;
+  --board-border: #00e5ff;
+  --board-bg: #050510;
+  --label-color: #5f6b9a;
+  --controls-color: #8fa0c9;
+  --kbd-bg: #10102a;
+  --kbd-border: #2d2d5a;
+  --kbd-color: #9be8ff;
+  --overlay-bg: rgba(5, 5, 15, 0.85);
+  --overlay-title-color: #ff2bd6;
+  --restart-bg: #00e5ff;
+  --restart-color: #05050f;
+  --restart-hover: #6cf3ff;
+  --grid-color: #16162a;
+}
+
+body[data-skin="pastel"] {
+  --bg: #faf3f8;
+  --text: #4a3b52;
+  --accent: #c9a0dc;
+  --board-border: #e6d5ea;
+  --board-bg: #fffaf9;
+  --label-color: #9a86a3;
+  --controls-color: #7a6a82;
+  --kbd-bg: #f2e6f0;
+  --kbd-border: #e6d5ea;
+  --kbd-color: #6a5a72;
+  --overlay-bg: rgba(250, 243, 248, 0.85);
+  --overlay-title-color: #e0879a;
+  --restart-bg: #c9a0dc;
+  --restart-color: #ffffff;
+  --restart-hover: #d9b8e8;
+  --grid-color: #eee0ea;
+}
+
+body[data-skin="pixel"] {
+  --bg: #10141a;
+  --text: #c8d6c0;
+  --accent: #8fbf5f;
+  --board-border: #3a4a3a;
+  --board-bg: #181d16;
+  --label-color: #5a6a52;
+  --controls-color: #7a8a72;
+  --kbd-bg: #202a1e;
+  --kbd-border: #3a4a3a;
+  --kbd-color: #a8c0a0;
+  --overlay-bg: rgba(16, 20, 10, 0.85);
+  --overlay-title-color: #e0785a;
+  --restart-bg: #8fbf5f;
+  --restart-color: #10140a;
+  --restart-hover: #a8d878;
+  --grid-color: #2b2b3a;
 }
 
 body {
@@ -145,50 +206,22 @@ kbd {
   color: var(--kbd-color);
 }
 
-/* ---- Toggle de tema ---- */
-.theme-section {
+/* ---- Selector de skin ---- */
+.skin-section {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
 }
 
-.theme-switch {
-  position: relative;
-  display: inline-block;
-  width: 40px;
-  height: 22px;
-}
-
-.theme-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.theme-switch .slider {
-  position: absolute;
-  cursor: pointer;
-  inset: 0;
+#skin-select {
   background: var(--kbd-bg);
   border: 1px solid var(--kbd-border);
-  border-radius: 22px;
-  transition: background 0.15s;
-}
-
-.theme-switch .slider::before {
-  content: '';
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  left: 2px;
-  bottom: 2px;
-  background: var(--accent);
-  border-radius: 50%;
-  transition: transform 0.15s;
-}
-
-.theme-switch input:checked + .slider::before {
-  transform: translateX(18px);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  border-radius: 4px;
+  padding: 4px 6px;
+  cursor: pointer;
 }
 
 /* ---- Overlay ---- */

@@ -43,6 +43,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
+- **5 skins visuales** (`retro`, `claro`, `neón`, `pastel`, `pixel`) seleccionables desde el panel lateral, sin recargar la página. Cada una cambia la paleta de color, el fondo y la forma en la que se dibujan los bloques (glow en neón, esquinas redondeadas en pastel, textura tipo 8-bit en pixel). La skin elegida se recuerda en `localStorage`.
 
 ---
 
@@ -118,7 +119,8 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Puntuación**: usa la tabla clásica `[0, 100, 300, 500, 800]` multiplicada por el nivel actual; el hard drop suma 2 puntos por celda recorrida y el soft drop 1 punto por fila.
 - **Nivel y velocidad**: el nivel sube cada 10 líneas; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
-- **Agujero de la tuerca** (`drawNutHole`): el hueco redondo no se guarda en el tablero, se dibuja borrando un círculo con `globalCompositeOperation = 'destination-out'` una vez pintados los bloques (así funciona igual en tema claro y oscuro). Las tuercas ya fijadas se localizan por patrón con `isNutHole`.
+- **Agujero de la tuerca** (`drawNutHole`): el hueco redondo no se guarda en el tablero, se dibuja borrando un círculo con `globalCompositeOperation = 'destination-out'` una vez pintados los bloques (así funciona igual en las 5 skins, porque revela el `--board-bg` que pone el CSS, nunca un color pintado en el canvas). Las tuercas ya fijadas se localizan por patrón con `isNutHole`.
+- **Skins** (`SKINS`): objeto con 5 entradas (`retro`, `claro`, `neon`, `pastel`, `pixel`), cada una con su paleta de 9 colores (índice = tipo de pieza, igual que antes), el color de la rejilla y el nombre del renderer de bloque que usa (`drawBlockFlat`, `drawBlockNeon`, `drawBlockPastel`, `drawBlockPixel`). `drawBlock` delega en el renderer de la skin activa. Cambiar de skin actualiza `document.body.dataset.skin` (que dispara las variables CSS del tema), reasigna `COLORS` y repinta sin recargar. Se persiste en `localStorage` (`tetris.skin`).
 
 ### Flujo del juego
 
@@ -175,11 +177,13 @@ Algunos parámetros fáciles de tunear en `game.js`:
 | `COLS`         | Columnas del tablero                     | `10`                  |
 | `ROWS`         | Filas del tablero                        | `20`                  |
 | `BLOCK`        | Tamaño en píxeles de cada celda          | `30`                  |
-| `COLORS`       | Paleta de colores por tipo de pieza      | 8 colores             |
+| `SKINS`        | Paleta, color de rejilla y renderer por skin (`retro`/`claro`/`neon`/`pastel`/`pixel`) | 5 skins |
 | `LINE_SCORES`  | Puntos por 1, 2, 3 o 4 líneas eliminadas | `[0,100,300,500,800]` |
 | `dropInterval` | Velocidad inicial de caída en ms         | `1000`                |
 
 > Si cambias `COLS`, `ROWS` o `BLOCK`, recuerda ajustar también `width` y `height` del `<canvas id="board">` en `index.html` para que coincida (`COLS × BLOCK` × `ROWS × BLOCK`).
+>
+> Los colores ya no viven en una constante `COLORS` fija: `COLORS` es un `let` que apunta a `SKINS[currentSkin].colors` y se reasigna al cambiar de skin. Para tunear una paleta, edita `SKINS.<id>.colors` (9 posiciones, `null` en la 0, tipos 1–8 en el mismo orden de siempre). Si además cambias el color de rejilla de una skin en `SKINS.<id>.grid`, actualiza también `--grid-color` en el bloque `body[data-skin="<id>"]` de `style.css` para que coincidan.
 
 ---
 
