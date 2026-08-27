@@ -42,7 +42,8 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Vista previa** de la siguiente pieza.
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
-- **Pausa** y **Game Over** con opción de reinicio.
+- **Menú de pausa** con reanudar, reiniciar, lista de controles desplegable y selector de nivel inicial (1–15, se recuerda entre partidas).
+- **Game Over** con opción de reinicio.
 
 ---
 
@@ -85,7 +86,9 @@ Después abre `http://localhost:8000` en el navegador.
 | `↑` o `X` | Rotar la pieza en sentido horario |
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
-| `P`       | Pausar / reanudar                 |
+| `P` / `Esc` | Abrir / cerrar el menú de pausa |
+
+Con el menú de pausa abierto el resto de teclas queda bloqueado; el menú tiene sus propios botones para **reanudar**, **reiniciar**, desplegar la lista de **controles** y un selector de **nivel inicial** (1–15) que se guarda en `localStorage` y se aplica a la próxima partida.
 
 ---
 
@@ -99,7 +102,8 @@ Define la estructura visual:
 
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
 - Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
-- Un overlay para los estados **PAUSA** y **GAME OVER**.
+- Un overlay (`#overlay`) para el estado **GAME OVER**.
+- Un overlay independiente (`#pause-menu`) para el **menú de pausa**, con sus propios botones (`#pm-resume`, `#pm-restart`, `#pm-controls-toggle`) y el selector `#pm-level`.
 
 ### 2. `style.css`
 
@@ -140,6 +144,8 @@ init()
 
 Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara `endGame()` y se muestra el overlay de **Game Over**.
 
+`P` o `Esc` llaman a `togglePause()`, que muestra/oculta `#pause-menu` (independiente del overlay de Game Over) y cancela/reprograma el bucle de animación. Con el menú abierto, el resto de teclas de juego queda bloqueado. Al reanudar (tecla o botón `#pm-resume`) se reinicia `lastTime` antes de relanzar `loop()`, para que el tiempo pausado no cuente como una caída acumulada. Cada botón del menú hace `blur()` sobre sí mismo tras el click, para que un `Space` o `Enter` posterior no vuelva a activarlo por accidente. El selector `#pm-level` guarda el nivel inicial elegido (1–15) en `localStorage` (`tetris.startLevel`); `init()` lo aplica a la **siguiente** partida.
+
 ---
 
 ## Tecnologías
@@ -178,6 +184,7 @@ Algunos parámetros fáciles de tunear en `game.js`:
 | `COLORS`       | Paleta de colores por tipo de pieza      | 8 colores             |
 | `LINE_SCORES`  | Puntos por 1, 2, 3 o 4 líneas eliminadas | `[0,100,300,500,800]` |
 | `dropInterval` | Velocidad inicial de caída en ms         | `1000`                |
+| `MAX_START_LEVEL` | Tope del selector de nivel inicial en el menú de pausa | `15` |
 
 > Si cambias `COLS`, `ROWS` o `BLOCK`, recuerda ajustar también `width` y `height` del `<canvas id="board">` en `index.html` para que coincida (`COLS × BLOCK` × `ROWS × BLOCK`).
 

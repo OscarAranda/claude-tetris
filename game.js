@@ -44,12 +44,38 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggle = document.getElementById('theme-toggle');
+const pauseMenu = document.getElementById('pause-menu');
+const pmResume = document.getElementById('pm-resume');
+const pmRestart = document.getElementById('pm-restart');
+const pmControlsToggle = document.getElementById('pm-controls-toggle');
+const pmControls = document.getElementById('pm-controls');
+const pmLevel = document.getElementById('pm-level');
+
+const START_LEVEL_KEY = 'tetris.startLevel';
+const MAX_START_LEVEL = 15;
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 let isLightTheme = false;
+let startLevel = 1;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
+}
+
+// Nivel inicial elegido en el menú de pausa: persiste entre partidas en
+// localStorage. Parseo defensivo — un valor corrupto o ausente no debe
+// romper el arranque, simplemente cae al nivel 1.
+function isValidStartLevel(n) {
+  return Number.isInteger(n) && n >= 1 && n <= MAX_START_LEVEL;
+}
+
+function loadStartLevel() {
+  const n = parseInt(localStorage.getItem(START_LEVEL_KEY), 10);
+  return isValidStartLevel(n) ? n : 1;
+}
+
+function saveStartLevel(n) {
+  localStorage.setItem(START_LEVEL_KEY, String(n));
 }
 
 function randomPiece() {
@@ -112,7 +138,7 @@ function clearLines() {
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
+    level = startLevel + Math.floor(lines / 10);
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
   }
@@ -281,13 +307,13 @@ function togglePause() {
   if (gameOver) return;
   paused = !paused;
   if (!paused) {
+    pauseMenu.classList.add('hidden');
     lastTime = performance.now();
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+    pmLevel.value = String(startLevel);
+    pauseMenu.classList.remove('hidden');
   }
 }
 
@@ -312,22 +338,24 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  level = startLevel;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  pauseMenu.classList.add('hidden');
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', e => {
   if (e.code === 'KeyP') { togglePause(); return; }
+  if (e.code === 'Escape') { e.preventDefault(); togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
     case 'ArrowLeft':
@@ -352,6 +380,43 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+
+// Menú de pausa: rellena el selector de nivel inicial (1-15) y engancha
+// sus acciones. Cada botón hace blur() sobre sí mismo tras el click: si no,
+// el foco se queda en el botón y al reanudar la siguiente pulsación de
+// Space/Enter vuelve a "clicarlo", comiéndose una pieza del jugador.
+for (let i = 1; i <= MAX_START_LEVEL; i++) {
+  const opt = document.createElement('option');
+  opt.value = i;
+  opt.textContent = i;
+  pmLevel.appendChild(opt);
+}
+
+startLevel = loadStartLevel();
+pmLevel.value = String(startLevel);
+
+pmLevel.addEventListener('change', () => {
+  const n = parseInt(pmLevel.value, 10);
+  if (isValidStartLevel(n)) {
+    startLevel = n;
+    saveStartLevel(n);
+  }
+});
+
+pmResume.addEventListener('click', () => {
+  pmResume.blur();
+  togglePause();
+});
+
+pmRestart.addEventListener('click', () => {
+  pmRestart.blur();
+  init();
+});
+
+pmControlsToggle.addEventListener('click', () => {
+  pmControlsToggle.blur();
+  pmControls.classList.toggle('hidden');
+});
 
 function applyTheme() {
   document.body.classList.toggle('light', isLightTheme);
