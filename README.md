@@ -43,6 +43,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
+- **Tabla de récords local**: top 5 de puntuaciones (con nombre de jugador) guardado en `localStorage`, junto con el mejor combo y las líneas máximas conseguidas históricamente. Si tu partida entra en el top 5 puedes guardar tu nombre desde el overlay de Game Over; la fila recién insertada se resalta. Un botón permite borrar todos los récords.
 
 ---
 
@@ -99,7 +100,7 @@ Define la estructura visual:
 
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
 - Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
-- Un overlay para los estados **PAUSA** y **GAME OVER**.
+- Un overlay para los estados **PAUSA** y **GAME OVER**, con la sección de récords (`#hs-save-row`, `#hs-records`, `#hs-reset`) dentro del `#overlay-box`.
 
 ### 2. `style.css`
 
@@ -119,6 +120,7 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Nivel y velocidad**: el nivel sube cada 10 líneas; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
 - **Agujero de la tuerca** (`drawNutHole`): el hueco redondo no se guarda en el tablero, se dibuja borrando un círculo con `globalCompositeOperation = 'destination-out'` una vez pintados los bloques (así funciona igual en tema claro y oscuro). Las tuercas ya fijadas se localizan por patrón con `isNutHole`.
+- **Récords** (`loadRecords`/`saveRecords`/`insertRecord`/`renderRecords`): el top 5, el mejor combo y las líneas máximas se guardan en `localStorage` bajo la clave `tetris.records`, con parseo defensivo por si el valor guardado está corrupto. `clearLines()` devuelve el número de líneas eliminadas; `lockPiece()` usa ese valor para llevar la cuenta del combo (bloqueos consecutivos que eliminan alguna línea) y actualizar `bestCombo`/`maxLines` en cuanto se superan. Al perder, si la puntuación entra en el top 5 se muestra un campo de nombre y un botón de guardar; `renderRecords(containerEl)` pinta la tabla y el resumen en cualquier contenedor que se le pase, para poder reutilizarla en otras pantallas.
 
 ### Flujo del juego
 
@@ -178,6 +180,8 @@ Algunos parámetros fáciles de tunear en `game.js`:
 | `COLORS`       | Paleta de colores por tipo de pieza      | 8 colores             |
 | `LINE_SCORES`  | Puntos por 1, 2, 3 o 4 líneas eliminadas | `[0,100,300,500,800]` |
 | `dropInterval` | Velocidad inicial de caída en ms         | `1000`                |
+| `RECORDS_KEY`  | Clave de `localStorage` para los récords | `'tetris.records'`    |
+| `MAX_TOP`      | Nº de puestos guardados en la tabla      | `5`                    |
 
 > Si cambias `COLS`, `ROWS` o `BLOCK`, recuerda ajustar también `width` y `height` del `<canvas id="board">` en `index.html` para que coincida (`COLS × BLOCK` × `ROWS × BLOCK`).
 
